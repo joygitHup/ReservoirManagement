@@ -21,7 +21,7 @@ const MapView = dynamic(
 );
 
 export default function Home() {
-  const [baseMapType, setBaseMapType] = useState('tianditu_vec');
+  const [baseMapType, setBaseMapType] = useState('gaode');
   const [showReservoirLayer, setShowReservoirLayer] = useState(true);
   const [showAlertLayer, setShowAlertLayer] = useState(true);
   const [showBasinLayer, setShowBasinLayer] = useState(false);
