@@ -38,14 +38,14 @@ const baseMapConfigs: Record<string, { label: string; urls: string[]; needLabel?
     label: '天地图矢量',
     urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
       (n) =>
-        `https://t${n}.tianditu.gov.cn/vec_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=vec&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+        `https://t${n}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${TIANDITU_KEY}`
     ),
   },
   tianditu_img: {
     label: '天地图影像',
     urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
       (n) =>
-        `https://t${n}.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+        `https://t${n}.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${TIANDITU_KEY}`
     ),
     needLabel: true,
   },
@@ -53,7 +53,7 @@ const baseMapConfigs: Record<string, { label: string; urls: string[]; needLabel?
     label: '天地图地形',
     urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
       (n) =>
-        `https://t${n}.tianditu.gov.cn/ter_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=ter&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+        `https://t${n}.tianditu.gov.cn/DataServer?T=ter_w&x={x}&y={y}&l={z}&tk=${TIANDITU_KEY}`
     ),
     needLabel: true,
   },
@@ -61,7 +61,14 @@ const baseMapConfigs: Record<string, { label: string; urls: string[]; needLabel?
     label: '天地图注记',
     urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
       (n) =>
-        `https://t${n}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=cva&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+        `https://t${n}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${TIANDITU_KEY}`
+    ),
+  },
+  tianditu_cia: {
+    label: '天地图影像注记',
+    urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
+      (n) =>
+        `https://t${n}.tianditu.gov.cn/DataServer?T=cia_w&x={x}&y={y}&l={z}&tk=${TIANDITU_KEY}`
     ),
   },
   gaode: {
@@ -152,7 +159,6 @@ export function MapView({
     const baseLayer = new TileLayer({
       source: new XYZ({
         urls: baseConfig.urls,
-        crossOrigin: 'anonymous',
       }),
     });
     baseLayerRef.current = baseLayer;
@@ -164,7 +170,6 @@ export function MapView({
       const labelLayer = new TileLayer({
         source: new XYZ({
           urls: labelConfig.urls,
-          crossOrigin: 'anonymous',
         }),
         zIndex: 1,
       });
@@ -245,7 +250,6 @@ export function MapView({
     const baseConfig = baseMapConfigs[baseMapType] || baseMapConfigs.tianditu_vec;
     baseLayerRef.current.setSource(new XYZ({
       urls: baseConfig.urls,
-      crossOrigin: 'anonymous',
     }));
 
     // 影像/地形图需要注记层
@@ -254,7 +258,6 @@ export function MapView({
       const labelConfig = baseMapConfigs.tianditu_cva;
       labelLayerRef.current.setSource(new XYZ({
         urls: labelConfig.urls,
-        crossOrigin: 'anonymous',
       }));
       labelLayerRef.current.setVisible(true);
     } else if (labelLayerRef.current) {
