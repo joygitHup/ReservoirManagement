@@ -90,25 +90,37 @@ body {
 }
 
 .ol-zoom {
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 16px;
   left: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: rgba(15, 29, 50, 0.85) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 4px 0 !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .ol-zoom button {
-  background-color: rgba(15, 29, 50, 0.9) !important;
-  color: #e2e8f0 !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
-  width: 32px !important;
-  height: 32px !important;
-  font-size: 18px !important;
-  border-radius: 6px !important;
-  margin: 2px 0 !important;
-  backdrop-filter: blur(8px);
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 16px !important;
+  font-weight: 300;
+  border-radius: 4px !important;
+  margin: 2px 6px !important;
+  line-height: 1;
+  transition: all 0.2s ease;
 }
 
 .ol-zoom button:hover {
-  background-color: rgba(59, 130, 246, 0.3) !important;
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  color: #e2e8f0 !important;
 }
 
 .ol-zoom button:focus {

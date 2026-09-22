@@ -24,18 +24,25 @@ function StatCard({
   color,
   trend,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   value: string | number;
   unit?: string;
   color: string;
   trend?: string;
+  style?: React.CSSProperties;
 }) {
   return (
-    <div className="bg-gradient-to-br from-[rgba(15,29,50,0.9)] to-[rgba(15,29,50,0.6)] border border-blue-500/10 rounded-xl p-4 backdrop-blur-sm">
+    <div 
+      className="relative overflow-hidden border border-white/5 rounded-2xl px-5 py-4 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
+      style={{ 
+        background: 'linear-gradient(135deg, rgba(15,29,50,0.65) 0%, rgba(10,22,40,0.55) 100%)',
+      }}
+    >
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.25), transparent)' }} />
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-2.5 rounded-lg ${color} bg-opacity-10`}>
-          <Icon className={`w-5 h-5 ${color.replace('text-', 'text-')}`} />
+        <div className="p-2.5 rounded-xl" style={{ background: `${color}14` }}>
+          <Icon className="w-5 h-5" style={{ color: color }} />
         </div>
         {trend && (
           <span className="text-[10px] text-emerald-400 flex items-center gap-0.5">
@@ -45,10 +52,10 @@ function StatCard({
         )}
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-2xl font-bold text-white tabular-nums">{value}</span>
-        {unit && <span className="text-xs text-slate-500">{unit}</span>}
+        <span className="text-2xl font-bold text-white tabular-nums" style={{ textShadow: '0 0 20px rgba(59,130,246,0.3)' }}>{value}</span>
+        {unit && <span className="text-xs text-slate-400 font-medium">{unit}</span>}
       </div>
-      <div className="text-xs text-slate-500 mt-1">{label}</div>
+      <div className="text-xs text-slate-400 mt-1 font-medium">{label}</div>
     </div>
   );
 }
@@ -225,42 +232,42 @@ function AlertTrendChart({ alerts }: { alerts: AlertRecord[] }) {
 
 export function DashboardStats({ total, normal, warning, danger, offline, onlineRate, reservoirs, alerts }: DashboardStatsProps) {
   return (
-    <div className="absolute top-20 left-72 right-80 z-10 pointer-events-none">
-      <div className="grid grid-cols-5 gap-3 mb-3 pointer-events-auto">
+    <div className="absolute top-[72px] left-[300px] right-[340px] z-10 pointer-events-none">
+      <div className="grid grid-cols-5 gap-4 pointer-events-auto">
         <StatCard
           icon={Droplets}
           label="水库总数"
           value={total}
           unit="座"
-          color="text-cyan-400"
+          color="#06b6d4"
         />
         <StatCard
           icon={Activity}
           label="正常运行"
           value={normal}
           unit="座"
-          color="text-emerald-400"
+          color="#10b981"
         />
         <StatCard
           icon={AlertTriangle}
           label="预警"
           value={warning}
           unit="座"
-          color="text-amber-400"
+          color="#f59e0b"
         />
         <StatCard
           icon={AlertTriangle}
           label="告警"
           value={danger}
           unit="座"
-          color="text-red-400"
+          color="#ef4444"
         />
         <StatCard
           icon={Wifi}
           label="设备在线率"
           value={onlineRate}
           unit="%"
-          color="text-blue-400"
+          color="#3b82f6"
         />
       </div>
     </div>
