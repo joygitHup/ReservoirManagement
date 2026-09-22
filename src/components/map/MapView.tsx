@@ -33,36 +33,50 @@ interface MapViewProps {
 const TIANDITU_KEY = 'd3b535fd697948afbe2e01f7a526b080';
 
 // 底图配置
-const baseMapConfigs: Record<string, { label: string; urls: string[]; subdomains?: string[] }> = {
+const baseMapConfigs: Record<string, { label: string; urls: string[]; needLabel?: boolean }> = {
   tianditu_vec: {
     label: '天地图矢量',
-    urls: [
-      `https://t{0-7}.tianditu.gov.cn/vec_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=vec&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`,
-    ],
+    urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
+      (n) =>
+        `https://t${n}.tianditu.gov.cn/vec_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=vec&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+    ),
   },
   tianditu_img: {
     label: '天地图影像',
-    urls: [
-      `https://t{0-7}.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`,
-    ],
+    urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
+      (n) =>
+        `https://t${n}.tianditu.gov.cn/img_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+    ),
+    needLabel: true,
   },
   tianditu_ter: {
     label: '天地图地形',
-    urls: [
-      `https://t{0-7}.tianditu.gov.cn/ter_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=ter&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`,
-    ],
+    urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
+      (n) =>
+        `https://t${n}.tianditu.gov.cn/ter_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=ter&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+    ),
+    needLabel: true,
+  },
+  tianditu_cva: {
+    label: '天地图注记',
+    urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
+      (n) =>
+        `https://t${n}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=cva&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=${TIANDITU_KEY}`
+    ),
   },
   gaode: {
     label: '高德地图',
-    urls: [
-      'https://webrd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
-    ],
+    urls: ['1', '2', '3', '4'].map(
+      (n) =>
+        `https://webrd0${n}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}`
+    ),
   },
   gaode_sat: {
     label: '高德卫星',
-    urls: [
-      'https://webst0{1-4}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
-    ],
+    urls: ['1', '2', '3', '4'].map(
+      (n) =>
+        `https://webst0${n}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}`
+    ),
   },
 };
 
@@ -124,6 +138,7 @@ export function MapView({
   const popupRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
   const baseLayerRef = useRef<TileLayer<XYZ> | null>(null);
+  const labelLayerRef = useRef<TileLayer<XYZ> | null>(null);
   const reservoirLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const alertOverlayRef = useRef<Overlay | null>(null);
   const [hoveredReservoir, setHoveredReservoir] = useState<Reservoir | null>(null);
@@ -142,6 +157,21 @@ export function MapView({
     });
     baseLayerRef.current = baseLayer;
 
+    // 影像/地形图需要叠加注记层
+    const layers: (TileLayer<XYZ> | VectorLayer<VectorSource>)[] = [baseLayer];
+    if (baseConfig.needLabel) {
+      const labelConfig = baseMapConfigs.tianditu_cva;
+      const labelLayer = new TileLayer({
+        source: new XYZ({
+          urls: labelConfig.urls,
+          crossOrigin: 'anonymous',
+        }),
+        zIndex: 1,
+      });
+      labelLayerRef.current = labelLayer;
+      layers.push(labelLayer);
+    }
+
     const reservoirSource = new VectorSource();
     const reservoirLayer = new VectorLayer({
       source: reservoirSource,
@@ -151,7 +181,7 @@ export function MapView({
 
     const map = new Map({
       target: mapContainerRef.current,
-      layers: [baseLayer, reservoirLayer],
+      layers: [...layers, reservoirLayer],
       view: new View({
         center: fromLonLat([108, 32]),
         zoom: 4.5,
@@ -217,6 +247,19 @@ export function MapView({
       urls: baseConfig.urls,
       crossOrigin: 'anonymous',
     }));
+
+    // 影像/地形图需要注记层
+    const needLabel = !!baseConfig.needLabel;
+    if (needLabel && labelLayerRef.current) {
+      const labelConfig = baseMapConfigs.tianditu_cva;
+      labelLayerRef.current.setSource(new XYZ({
+        urls: labelConfig.urls,
+        crossOrigin: 'anonymous',
+      }));
+      labelLayerRef.current.setVisible(true);
+    } else if (labelLayerRef.current) {
+      labelLayerRef.current.setVisible(false);
+    }
   }, [baseMapType]);
 
   // 更新水库图层
