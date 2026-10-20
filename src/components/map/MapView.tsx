@@ -15,7 +15,24 @@ import Stroke from 'ol/style/Stroke';
 import Text from 'ol/style/Text';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import Overlay from 'ol/Overlay';
+import Draw from 'ol/interaction/Draw';
+import GeoJSON from 'ol/format/GeoJSON';
+import { getArea, getLength } from 'ol/sphere';
+import { unByKey } from 'ol/Observable';
+import ScaleLine from 'ol/control/ScaleLine';
+import MousePosition from 'ol/control/MousePosition';
+import { createStringXY } from 'ol/coordinate';
+import type Geometry from 'ol/geom/Geometry';
+import type { StyleFunction } from 'ol/style/Style';
 import type { Reservoir, AlertRecord } from '@/data/reservoirs';
+import type { FloodBoundary } from '@/lib/flood';
+import { MeasurePanel } from '@/components/map/MeasurePanel';
+import {
+  formatLength,
+  formatArea,
+  type MeasureResult,
+  type MeasureTool,
+} from '@/lib/measure';
 
 interface MapViewProps {
   reservoirs: Reservoir[];
@@ -27,6 +44,15 @@ interface MapViewProps {
   showAlertLayer: boolean;
   showBasinLayer: boolean;
   selectedTime: Date;
+  showScaleLine: boolean;
+  showCoordinates: boolean;
+  mapAnimation: boolean;
+  alertBlink: boolean;
+  /** 当前激活的地图工具：measure（测距）/ area（测面）/ flood（淹没分析） */
+  activeTool: string | null;
+  onToolChange: (tool: string | null) => void;
+  /** 淹没分析范围（GeoJSON，WGS84） */
+  floodBoundary: FloodBoundary | null;
 }
 
 // 天地图 Key
@@ -131,6 +157,58 @@ function createReservoirFeature(reservoir: Reservoir, isSelected: boolean, hasAl
   return feature;
 }
 
+const MEASURE_COLOR = '#06b6d4';
+
+// 测量图层样式：按几何类型区分线 / 面 / 节点
+const measureStyleFunction: StyleFunction = (feature) => {
+  const geometry = feature.getGeometry();
+  const type = geometry?.getType();
+  if (type === 'Polygon' || type === 'MultiPolygon') {
+    return new Style({
+      stroke: new Stroke({ color: MEASURE_COLOR, width: 2, lineDash: [6, 4] }),
+      fill: new Fill({ color: 'rgba(6, 182, 212, 0.16)' }),
+    });
+  }
+  if (type === 'LineString' || type === 'MultiLineString') {
+    return new Style({
+      stroke: new Stroke({ color: MEASURE_COLOR, width: 2, lineDash: [6, 4] }),
+    });
+  }
+  return new Style({
+    image: new Circle({
+      radius: 4,
+      fill: new Fill({ color: '#ffffff' }),
+      stroke: new Stroke({ color: MEASURE_COLOR, width: 2 }),
+    }),
+  });
+};
+
+// 绘制完成后带结果标注的样式
+function createMeasuredStyle(label: string) {
+  return new Style({
+    stroke: new Stroke({ color: MEASURE_COLOR, width: 2, lineDash: [6, 4] }),
+    fill: new Fill({ color: 'rgba(6, 182, 212, 0.16)' }),
+    image: new Circle({
+      radius: 4,
+      fill: new Fill({ color: '#ffffff' }),
+      stroke: new Stroke({ color: MEASURE_COLOR, width: 2 }),
+    }),
+    text: new Text({
+      text: label,
+      font: '12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      fill: new Fill({ color: '#e2e8f0' }),
+      stroke: new Stroke({ color: 'rgba(10,22,40,0.9)', width: 3 }),
+      padding: [2, 4, 2, 4],
+    }),
+  });
+}
+
+// 淹没范围样式
+const floodStyle = new Style({
+  stroke: new Stroke({ color: '#ef4444', width: 2, lineDash: [8, 5] }),
+  fill: new Fill({ color: 'rgba(239, 68, 68, 0.28)' }),
+});
+
 export function MapView({
   reservoirs,
   alerts,
@@ -140,16 +218,34 @@ export function MapView({
   showReservoirLayer,
   showAlertLayer,
   showBasinLayer,
+  showScaleLine,
+  showCoordinates,
+  mapAnimation,
+  alertBlink,
+  activeTool,
+  onToolChange,
+  floodBoundary,
 }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const measureTipRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Map | null>(null);
   const baseLayerRef = useRef<TileLayer<XYZ> | null>(null);
   const labelLayerRef = useRef<TileLayer<XYZ> | null>(null);
   const reservoirLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const floodLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
+  const measureSourceRef = useRef<VectorSource | null>(null);
+  const measureTipOverlayRef = useRef<Overlay | null>(null);
+  const drawRef = useRef<Draw | null>(null);
+  const measureIdRef = useRef(0);
   const alertOverlayRef = useRef<Overlay | null>(null);
+  const mapAnimationRef = useRef(mapAnimation);
+  const activeToolRef = useRef(activeTool);
   const [hoveredReservoir, setHoveredReservoir] = useState<Reservoir | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null);
+  const [measurements, setMeasurements] = useState<MeasureResult[]>([]);
+
+  const isDrawingTool = activeTool === 'measure' || activeTool === 'area';
 
   // 初始化地图
   useEffect(() => {
@@ -184,9 +280,26 @@ export function MapView({
     });
     reservoirLayerRef.current = reservoirLayer;
 
+    // 淹没范围图层（位于水库点位下方）
+    const floodLayer = new VectorLayer({
+      source: new VectorSource(),
+      zIndex: 5,
+      style: floodStyle,
+    });
+    floodLayerRef.current = floodLayer;
+
+    // 测量图层（位于所有业务图层之上）
+    const measureSource = new VectorSource();
+    measureSourceRef.current = measureSource;
+    const measureLayer = new VectorLayer({
+      source: measureSource,
+      zIndex: 30,
+      style: measureStyleFunction,
+    });
+
     const map = new Map({
       target: mapContainerRef.current,
-      layers: [...layers, reservoirLayer],
+      layers: [...layers, floodLayer, reservoirLayer, measureLayer],
       view: new View({
         center: fromLonLat([108, 32]),
         zoom: 4.5,
@@ -206,8 +319,19 @@ export function MapView({
     map.addOverlay(popupOverlay);
     alertOverlayRef.current = popupOverlay;
 
-    // 点击事件
+    // 测量实时提示 overlay
+    const measureTipOverlay = new Overlay({
+      element: measureTipRef.current!,
+      positioning: 'top-left',
+      offset: [14, 14],
+      stopEvent: false,
+    });
+    map.addOverlay(measureTipOverlay);
+    measureTipOverlayRef.current = measureTipOverlay;
+
+    // 点击事件（绘制工具激活时交由 Draw 处理）
     map.on('singleclick', (evt) => {
+      if (activeToolRef.current === 'measure' || activeToolRef.current === 'area') return;
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, {
         layerFilter: (l) => l === reservoirLayer,
       });
@@ -220,6 +344,7 @@ export function MapView({
     // hover 事件
     map.on('pointermove', (evt) => {
       if (evt.dragging) return;
+      if (activeToolRef.current) return;
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, {
         layerFilter: (l) => l === reservoirLayer,
       });
@@ -243,6 +368,38 @@ export function MapView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 同步定位动画开关
+  useEffect(() => {
+    mapAnimationRef.current = mapAnimation;
+  }, [mapAnimation]);
+
+  // 比例尺控件（按设置动态挂载/卸载）
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !showScaleLine) return;
+    const control = new ScaleLine({ units: 'metric', className: 'ol-scale-line-custom' });
+    map.addControl(control);
+    return () => {
+      map.removeControl(control);
+    };
+  }, [showScaleLine]);
+
+  // 鼠标坐标控件（按设置动态挂载/卸载）
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !showCoordinates) return;
+    const control = new MousePosition({
+      coordinateFormat: createStringXY(4),
+      projection: 'EPSG:4326',
+      className: 'ol-mouse-position-custom',
+      placeholder: '&nbsp;',
+    });
+    map.addControl(control);
+    return () => {
+      map.removeControl(control);
+    };
+  }, [showCoordinates]);
 
   // 切换底图
   useEffect(() => {
@@ -292,13 +449,13 @@ export function MapView({
     view.animate({
       center: fromLonLat(selectedReservoir.coordinates),
       zoom: 10,
-      duration: 800,
+      duration: mapAnimationRef.current ? 800 : 0,
     });
   }, [selectedReservoir]);
 
   // 告警闪烁动画
   useEffect(() => {
-    if (!reservoirLayerRef.current || !showAlertLayer) return;
+    if (!reservoirLayerRef.current || !showAlertLayer || !alertBlink) return;
     
     let flashState = 0;
     const alertReservoirIds = new Set(alerts.map(a => a.reservoirId));
@@ -341,7 +498,107 @@ export function MapView({
     
     const interval = setInterval(animate, 100);
     return () => clearInterval(interval);
-  }, [alerts, showAlertLayer, selectedReservoir]);
+  }, [alerts, showAlertLayer, selectedReservoir, alertBlink]);
+
+  // 同步当前工具，供地图事件回调判断是否需要拦截
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+  }, [activeTool]);
+
+  // 测距 / 测面：按工具切换 Draw 交互
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (drawRef.current) {
+      map.removeInteraction(drawRef.current);
+      drawRef.current = null;
+    }
+
+    const source = measureSourceRef.current;
+    const tipOverlay = measureTipOverlayRef.current;
+    const tipElement = measureTipRef.current;
+    if (!source || !tipOverlay || !tipElement) return;
+
+    const tool: MeasureTool | null =
+      activeTool === 'measure' || activeTool === 'area' ? activeTool : null;
+
+    if (!tool) {
+      tipOverlay.setPosition(undefined);
+      map.getViewport().style.cursor = '';
+      return;
+    }
+
+    let sketchGeometry: Geometry | null = null;
+
+    const draw = new Draw({
+      source,
+      type: tool === 'measure' ? 'LineString' : 'Polygon',
+      style: measureStyleFunction,
+    });
+    drawRef.current = draw;
+    map.addInteraction(draw);
+    map.getViewport().style.cursor = 'crosshair';
+
+    const pointerKey = map.on('pointermove', (evt) => {
+      if (!sketchGeometry) {
+        tipOverlay.setPosition(undefined);
+        return;
+      }
+      const value = tool === 'measure' ? getLength(sketchGeometry) : getArea(sketchGeometry);
+      tipElement.textContent =
+        tool === 'measure' ? `总长 ${formatLength(value)}` : `面积 ${formatArea(value)}`;
+      tipOverlay.setPosition(evt.coordinate);
+    });
+
+    draw.on('drawstart', (event) => {
+      sketchGeometry = event.feature.getGeometry() ?? null;
+    });
+
+    draw.on('drawend', (event) => {
+      const geometry = event.feature.getGeometry();
+      sketchGeometry = null;
+      tipOverlay.setPosition(undefined);
+      if (!geometry) return;
+
+      const value = tool === 'measure' ? getLength(geometry) : getArea(geometry);
+      event.feature.setStyle(
+        createMeasuredStyle(tool === 'measure' ? formatLength(value) : formatArea(value))
+      );
+
+      measureIdRef.current += 1;
+      const id = measureIdRef.current;
+      setMeasurements((prev) => [...prev, { id, tool, value }]);
+    });
+
+    return () => {
+      unByKey(pointerKey);
+      map.removeInteraction(draw);
+      if (drawRef.current === draw) drawRef.current = null;
+      tipOverlay.setPosition(undefined);
+      map.getViewport().style.cursor = '';
+    };
+  }, [activeTool]);
+
+  // 渲染淹没分析范围
+  useEffect(() => {
+    const layer = floodLayerRef.current;
+    const source = layer?.getSource();
+    if (!source) return;
+    source.clear();
+    if (!floodBoundary) return;
+
+    const geometry = new GeoJSON().readGeometry(floodBoundary.geometry, {
+      featureProjection: 'EPSG:3857',
+    });
+    source.addFeature(new Feature({ geometry }));
+  }, [floodBoundary]);
+
+  // 清除测量结果
+  const handleClearMeasurements = useCallback(() => {
+    measureSourceRef.current?.clear();
+    setMeasurements([]);
+  }, []);
 
   const flyTo = useCallback((lon: number, lat: number, zoom: number = 10) => {
     if (!mapRef.current) return;
@@ -397,6 +654,22 @@ export function MapView({
           </div>
         )}
       </div>
+
+      {/* 测量实时提示（跟随光标） */}
+      <div
+        ref={measureTipRef}
+        className="bg-[rgba(15,29,50,0.95)] border border-cyan-500/40 rounded px-2 py-1 text-xs font-mono text-cyan-300 shadow-lg backdrop-blur-sm whitespace-nowrap"
+      />
+
+      {/* 测量结果面板 */}
+      {(isDrawingTool || measurements.length > 0) && (
+        <MeasurePanel
+          activeTool={isDrawingTool ? (activeTool as MeasureTool) : null}
+          items={measurements}
+          onClear={handleClearMeasurements}
+          onExit={() => onToolChange(null)}
+        />
+      )}
     </div>
   );
 }

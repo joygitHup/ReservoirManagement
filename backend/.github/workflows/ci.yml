@@ -1,0 +1,36 @@
+name: backend-ci
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ["backend/**"]
+  pull_request:
+    paths: ["backend/**"]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-secret-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装依赖
+        run: pip install -r requirements/dev.txt
+      - name: 迁移一致性（标准 17.3）
+        run: python manage.py makemigrations --check --dry-run
+      - name: ruff 检查
+        run: ruff check .
+      - name: mypy 类型检查
+        run: mypy apps common
+      - name: pytest + 覆盖率门槛
+        run: pytest --cov=apps --cov=common --cov-fail-under=80
+      - name: OpenAPI schema 校验
+        run: python manage.py spectacular --file schema.yml --validate

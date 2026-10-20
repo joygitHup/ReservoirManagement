@@ -232,7 +232,7 @@ function AlertTrendChart({ alerts }: { alerts: AlertRecord[] }) {
 
 export function DashboardStats({ total, normal, warning, danger, offline, onlineRate, reservoirs, alerts }: DashboardStatsProps) {
   return (
-    <div className="absolute top-[72px] left-[300px] right-[340px] z-10 pointer-events-none">
+    <div className="absolute top-[12px] left-[300px] right-[340px] z-10 pointer-events-none">
       <div className="grid grid-cols-5 gap-4 pointer-events-auto">
         <StatCard
           icon={Droplets}

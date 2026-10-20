@@ -12,13 +12,35 @@ import {
   alertList,
   getOverviewStats,
   type Reservoir,
+  type AlertRecord,
 } from '@/data/reservoirs';
+import {
+  DEFAULT_SETTINGS,
+  type SystemSettings,
+} from '@/components/layout/SystemSettingsDialog';
+import { NotificationPanel } from '@/components/layout/NotificationPanel';
+import { FloodAnalysisPanel } from '@/components/map/FloodAnalysisPanel';
+import type { FloodAnalysis } from '@/lib/flood';
 
 // 动态加载地图组件（避免 SSR 问题）
 const MapView = dynamic(
   () => import('@/components/map/MapView').then(mod => ({ default: mod.MapView })),
   { ssr: false }
 );
+
+// 从本地读取系统设置
+function loadStoredSettings(): SystemSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  try {
+    const raw = window.localStorage.getItem('rms-settings');
+    if (raw) {
+      return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<SystemSettings>) };
+    }
+  } catch {
+    // 读取失败时回退到默认设置
+  }
+  return DEFAULT_SETTINGS;
+}
 
 export default function Home() {
   const [baseMapType, setBaseMapType] = useState('gaode');
@@ -30,9 +52,49 @@ export default function Home() {
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d'>('24h');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [settings, setSettings] = useState<SystemSettings>(loadStoredSettings);
+  const [alertPanelOpen, setAlertPanelOpen] = useState(false);
+  const [floodResult, setFloodResult] = useState<FloodAnalysis | null>(null);
 
   const stats = getOverviewStats();
   const unconfirmedAlerts = alertList.filter(a => a.status === 'unconfirmed');
+
+  // 地图标注使用的告警（可按设置仅显示未确认告警）
+  const mapAlerts = settings.onlyUnconfirmedAlert
+    ? unconfirmedAlerts
+    : alertList;
+
+  // 持久化系统设置
+  useEffect(() => {
+    try {
+      localStorage.setItem('rms-settings', JSON.stringify(settings));
+    } catch {
+      // 忽略写入失败
+    }
+  }, [settings]);
+
+  const handleSettingsChange = useCallback((patch: Partial<SystemSettings>) => {
+    setSettings(prev => ({ ...prev, ...patch }));
+  }, []);
+
+  const handleSettingsReset = useCallback(() => {
+    setSettings(DEFAULT_SETTINGS);
+  }, []);
+
+  // 切换地图工具
+  const handleToolChange = useCallback((tool: string | null) => {
+    setActiveTool(tool);
+  }, []);
+
+  // 淹没分析结果回传（来自后端接口计算）
+  const handleFloodResult = useCallback((result: FloodAnalysis | null) => {
+    setFloodResult(result);
+  }, []);
+
+  // 退出淹没分析时清除地图上的淹没范围
+  useEffect(() => {
+    if (activeTool !== 'flood') setFloodResult(null);
+  }, [activeTool]);
 
   // 模拟实时数据更新
   useEffect(() => {
@@ -57,6 +119,13 @@ export default function Home() {
     setSelectedReservoir(reservoir);
   }, []);
 
+  // 点击告警消息：定位到对应水库并关闭面板
+  const handleAlertSelect = useCallback((alert: AlertRecord) => {
+    const target = reservoirList.find(r => r.id === alert.reservoirId);
+    if (target) setSelectedReservoir(target);
+    setAlertPanelOpen(false);
+  }, []);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a1628]">
       {/* 顶部工具栏 */}
@@ -70,9 +139,12 @@ export default function Home() {
         showBasinLayer={showBasinLayer}
         onToggleBasinLayer={() => setShowBasinLayer(!showBasinLayer)}
         activeTool={activeTool}
-        onToolChange={setActiveTool}
+        onToolChange={handleToolChange}
         alertCount={unconfirmedAlerts.length}
-        onToggleAlertPanel={() => {}}
+        onToggleAlertPanel={() => setAlertPanelOpen(prev => !prev)}
+        settings={settings}
+        onSettingsChange={handleSettingsChange}
+        onSettingsReset={handleSettingsReset}
       />
 
       {/* 主体区域 */}
@@ -108,7 +180,7 @@ export default function Home() {
           {/* OpenLayers 地图 */}
           <MapView
             reservoirs={reservoirList}
-            alerts={alertList}
+            alerts={mapAlerts}
             selectedReservoir={selectedReservoir}
             onSelectReservoir={handleReservoirSelect}
             baseMapType={baseMapType}
@@ -116,6 +188,20 @@ export default function Home() {
             showAlertLayer={showAlertLayer}
             showBasinLayer={showBasinLayer}
             selectedTime={selectedTime}
+            showScaleLine={settings.showScaleLine}
+            showCoordinates={settings.showCoordinates}
+            mapAnimation={settings.mapAnimation}
+            alertBlink={settings.alertBlink}
+            activeTool={activeTool}
+            onToolChange={handleToolChange}
+            floodBoundary={floodResult?.boundary ?? null}
+          />
+
+          {/* 淹没分析面板 */}
+          <FloodAnalysisPanel
+            open={activeTool === 'flood'}
+            onClose={() => setActiveTool(null)}
+            onResult={handleFloodResult}
           />
         </main>
 
@@ -138,6 +224,14 @@ export default function Home() {
         onTimeRangeChange={setTimeRange}
         isPlaying={isPlaying}
         onTogglePlay={() => setIsPlaying(!isPlaying)}
+      />
+
+      {/* 告警消息面板 */}
+      <NotificationPanel
+        open={alertPanelOpen}
+        onOpenChange={setAlertPanelOpen}
+        alerts={alertList}
+        onSelectAlert={handleAlertSelect}
       />
     </div>
   );

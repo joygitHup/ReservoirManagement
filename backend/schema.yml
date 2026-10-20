@@ -1,0 +1,2025 @@
+openapi: 3.0.3
+info:
+  title: 智慧水库综合管理系统 API
+  version: 1.0.0
+  description: 面向水利管理部门、水库运维单位、防汛指挥中心的 WebGIS 后端 API。
+paths:
+  /api/v1/alerts/:
+    get:
+      operationId: alerts_list
+      description: 告警查询与状态流转端点。
+      summary: 告警列表
+      parameters:
+      - in: query
+        name: level
+        schema:
+          type: string
+          title: 告警等级
+          enum:
+          - danger
+          - warning
+        description: |-
+          * `warning` - 预警
+          * `danger` - 告警
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: 处理状态
+          enum:
+          - processing
+          - resolved
+          - unconfirmed
+        description: |-
+          * `unconfirmed` - 未确认
+          * `processing` - 处理中
+          * `resolved` - 已解决
+      - in: query
+        name: type
+        schema:
+          type: string
+          title: 告警类型
+          enum:
+          - data_abnormal
+          - device_offline
+          - rainfall
+          - water_level
+        description: |-
+          * `water_level` - 水位超限
+          * `device_offline` - 设备离线
+          * `data_abnormal` - 数据异常
+          * `rainfall` - 强降雨
+      - in: query
+        name: reservoir
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: reservoirCode
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: pageSize
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      tags:
+      - alerts
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlertListList'
+          description: ''
+    post:
+      operationId: alerts_create
+      description: 告警查询与状态流转端点。
+      summary: 新建告警
+      tags:
+      - alerts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AlertWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlertWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertWrite'
+          description: ''
+  /api/v1/alerts/{id}/:
+    get:
+      operationId: alerts_retrieve
+      description: 告警查询与状态流转端点。
+      summary: 告警详情
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 告警记录 的 UUID 字符串。
+        required: true
+      tags:
+      - alerts
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertDetail'
+          description: ''
+    patch:
+      operationId: alerts_partial_update
+      description: 告警查询与状态流转端点。
+      summary: 更新告警
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 告警记录 的 UUID 字符串。
+        required: true
+      tags:
+      - alerts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAlertWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAlertWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAlertWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertWrite'
+          description: ''
+  /api/v1/alerts/{id}/confirm/:
+    post:
+      operationId: alerts_confirm_create
+      description: 未确认 -> 处理中。
+      summary: 确认告警
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 告警记录 的 UUID 字符串。
+        required: true
+      tags:
+      - alerts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertDetail'
+          description: ''
+  /api/v1/alerts/{id}/resolve/:
+    post:
+      operationId: alerts_resolve_create
+      description: 处理中 -> 已解决。
+      summary: 解决告警
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 告警记录 的 UUID 字符串。
+        required: true
+      tags:
+      - alerts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertDetail'
+          description: ''
+  /api/v1/alerts/trend/:
+    get:
+      operationId: alerts_trend_retrieve
+      description: 告警查询与状态流转端点。
+      summary: 告警趋势
+      tags:
+      - alerts
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: 账号密码登录，返回 JWT 令牌对。
+      summary: 登录
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: 登出：把 refresh token 加入黑名单。
+      summary: 登出
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: 当前登录用户信息。
+      summary: 当前用户
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: 用 refresh token 换取新的 access token。
+      summary: 刷新令牌
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/reservoirs/:
+    get:
+      operationId: reservoirs_list
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 水库列表
+      parameters:
+      - in: query
+        name: region
+        schema:
+          type: string
+      - in: query
+        name: type
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: 运行状态
+          enum:
+          - danger
+          - normal
+          - offline
+          - warning
+        description: |-
+          * `normal` - 正常
+          * `warning` - 预警
+          * `danger` - 告警
+          * `offline` - 离线
+      - in: query
+        name: deviceStatus
+        schema:
+          type: string
+          title: 设备状态
+          enum:
+          - offline
+          - online
+        description: |-
+          * `online` - 在线
+          * `offline` - 离线
+      - in: query
+        name: minWaterLevel
+        schema:
+          type: number
+      - in: query
+        name: maxWaterLevel
+        schema:
+          type: number
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: pageSize
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReservoirListList'
+          description: ''
+    post:
+      operationId: reservoirs_create
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 新建水库
+      tags:
+      - reservoirs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservoirWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReservoirWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReservoirWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservoirWrite'
+          description: ''
+  /api/v1/reservoirs/{id}/:
+    get:
+      operationId: reservoirs_retrieve
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 水库详情
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 水库 的 UUID 字符串。
+        required: true
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservoirDetail'
+          description: ''
+    put:
+      operationId: reservoirs_update
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 更新水库
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 水库 的 UUID 字符串。
+        required: true
+      tags:
+      - reservoirs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservoirWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReservoirWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReservoirWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservoirWrite'
+          description: ''
+    patch:
+      operationId: reservoirs_partial_update
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 局部更新水库
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 水库 的 UUID 字符串。
+        required: true
+      tags:
+      - reservoirs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReservoirWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReservoirWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReservoirWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservoirWrite'
+          description: ''
+    delete:
+      operationId: reservoirs_destroy
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 删除水库
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 水库 的 UUID 字符串。
+        required: true
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/reservoirs/{id}/history/:
+    get:
+      operationId: reservoirs_history_retrieve
+      description: 历史趋势：按 range=1h|24h|7d 返回时间序列。
+      summary: 水库历史监测数据
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: 标识此 水库 的 UUID 字符串。
+        required: true
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/reservoirs/by-region/:
+    get:
+      operationId: reservoirs_by_region_retrieve
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 水库区域分组
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/reservoirs/overview/:
+    get:
+      operationId: reservoirs_overview_retrieve
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 水库概览统计
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/reservoirs/water-level-ranking/:
+    get:
+      operationId: reservoirs_water_level_ranking_retrieve
+      description: 水库 CRUD 与统计端点：读开放、写严格（标准 4.4 / 4.6）。
+      summary: 水位占比排行
+      tags:
+      - reservoirs
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/users/:
+    get:
+      operationId: users_list
+      description: 用户查询接口（管理端）。
+      summary: 用户列表
+      parameters:
+      - in: query
+        name: role
+        schema:
+          type: string
+      - in: query
+        name: isActive
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: 搜索关键词。
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: 用于排序结果的字段。
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: 分页结果集中的页码。
+        schema:
+          type: integer
+      - name: pageSize
+        required: false
+        in: query
+        description: 每页返回的结果数量。
+        schema:
+          type: integer
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: users_retrieve
+      description: 用户查询接口（管理端）。
+      summary: 用户详情
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: 标识此 用户 的 唯一整数值。
+        required: true
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /health/:
+    get:
+      operationId: health_retrieve
+      description: 综合健康检查：返回数据库与缓存状态。
+      summary: 综合健康检查
+      tags:
+      - system
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /health/live/:
+    get:
+      operationId: health_live_retrieve
+      description: 存活探针：进程可响应即 200，不检查依赖。
+      summary: 存活探针
+      tags:
+      - system
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /health/ready/:
+    get:
+      operationId: health_ready_retrieve
+      description: 就绪探针：依赖可用方可接流量。
+      summary: 就绪探针
+      tags:
+      - system
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+components:
+  schemas:
+    AlertDetail:
+      type: object
+      description: 告警详情：追加确认/解决时间与处理人。
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          title: 告警编号
+          maxLength: 32
+        reservoirId:
+          type: string
+          format: uuid
+          readOnly: true
+        reservoirName:
+          type: string
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/AlertTypeEnum'
+          title: 告警类型
+        typeLabel:
+          type: string
+          readOnly: true
+        level:
+          allOf:
+          - $ref: '#/components/schemas/AlertLevelEnum'
+          title: 告警等级
+        levelLabel:
+          type: string
+          readOnly: true
+        value:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 监测值
+        threshold:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 阈值
+        unit:
+          type: string
+          title: 单位
+          maxLength: 16
+        message:
+          type: string
+          title: 告警描述
+          maxLength: 255
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AlertStatusEnum'
+          title: 处理状态
+        statusLabel:
+          type: string
+          readOnly: true
+        createTime:
+          type: string
+          format: date-time
+          readOnly: true
+        confirmTime:
+          type: string
+          format: date-time
+          readOnly: true
+        resolveTime:
+          type: string
+          format: date-time
+          readOnly: true
+        handler:
+          type: string
+          readOnly: true
+          default: ''
+      required:
+      - code
+      - confirmTime
+      - createTime
+      - handler
+      - id
+      - level
+      - levelLabel
+      - reservoirId
+      - reservoirName
+      - resolveTime
+      - statusLabel
+      - type
+      - typeLabel
+    AlertLevelEnum:
+      enum:
+      - warning
+      - danger
+      type: string
+      description: |-
+        * `warning` - 预警
+        * `danger` - 告警
+    AlertList:
+      type: object
+      description: 告警列表：字段与前端 AlertRecord 对齐。
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          title: 告警编号
+          maxLength: 32
+        reservoirId:
+          type: string
+          format: uuid
+          readOnly: true
+        reservoirName:
+          type: string
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/AlertTypeEnum'
+          title: 告警类型
+        typeLabel:
+          type: string
+          readOnly: true
+        level:
+          allOf:
+          - $ref: '#/components/schemas/AlertLevelEnum'
+          title: 告警等级
+        levelLabel:
+          type: string
+          readOnly: true
+        value:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 监测值
+        threshold:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 阈值
+        unit:
+          type: string
+          title: 单位
+          maxLength: 16
+        message:
+          type: string
+          title: 告警描述
+          maxLength: 255
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AlertStatusEnum'
+          title: 处理状态
+        statusLabel:
+          type: string
+          readOnly: true
+        createTime:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - createTime
+      - id
+      - level
+      - levelLabel
+      - reservoirId
+      - reservoirName
+      - statusLabel
+      - type
+      - typeLabel
+    AlertStatusEnum:
+      enum:
+      - unconfirmed
+      - processing
+      - resolved
+      type: string
+      description: |-
+        * `unconfirmed` - 未确认
+        * `processing` - 处理中
+        * `resolved` - 已解决
+    AlertTypeEnum:
+      enum:
+      - water_level
+      - device_offline
+      - data_abnormal
+      - rainfall
+      type: string
+      description: |-
+        * `water_level` - 水位超限
+        * `device_offline` - 设备离线
+        * `data_abnormal` - 数据异常
+        * `rainfall` - 强降雨
+    AlertWrite:
+      type: object
+      description: 告警写入：状态变更走 confirm/resolve 端点，不在此处开放。
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        reservoir:
+          type: string
+          format: uuid
+        type:
+          allOf:
+          - $ref: '#/components/schemas/AlertTypeEnum'
+          title: 告警类型
+        level:
+          allOf:
+          - $ref: '#/components/schemas/AlertLevelEnum'
+          title: 告警等级
+        value:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 监测值
+        threshold:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 阈值
+        unit:
+          type: string
+          title: 单位
+          maxLength: 16
+        message:
+          type: string
+          title: 告警描述
+          maxLength: 255
+      required:
+      - id
+      - level
+      - reservoir
+      - type
+    AlertWriteRequest:
+      type: object
+      description: 告警写入：状态变更走 confirm/resolve 端点，不在此处开放。
+      properties:
+        reservoir:
+          type: string
+          format: uuid
+        type:
+          allOf:
+          - $ref: '#/components/schemas/AlertTypeEnum'
+          title: 告警类型
+        level:
+          allOf:
+          - $ref: '#/components/schemas/AlertLevelEnum'
+          title: 告警等级
+        value:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 监测值
+        threshold:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 阈值
+        unit:
+          type: string
+          title: 单位
+          maxLength: 16
+        message:
+          type: string
+          title: 告警描述
+          maxLength: 255
+      required:
+      - level
+      - reservoir
+      - type
+    DeviceStatusEnum:
+      enum:
+      - online
+      - offline
+      type: string
+      description: |-
+        * `online` - 在线
+        * `offline` - 离线
+    LoginRequest:
+      type: object
+      description: 登录入参：校验并把 user 注入 validated_data。
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    LogoutRequest:
+      type: object
+      description: 登出入参：可选携带 refresh token 以加入黑名单。
+      properties:
+        refresh:
+          type: string
+    PaginatedAlertListList:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlertList'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+    PaginatedReservoirListList:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReservoirList'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+    PaginatedUserList:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            list:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+    PatchedAlertWriteRequest:
+      type: object
+      description: 告警写入：状态变更走 confirm/resolve 端点，不在此处开放。
+      properties:
+        reservoir:
+          type: string
+          format: uuid
+        type:
+          allOf:
+          - $ref: '#/components/schemas/AlertTypeEnum'
+          title: 告警类型
+        level:
+          allOf:
+          - $ref: '#/components/schemas/AlertLevelEnum'
+          title: 告警等级
+        value:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 监测值
+        threshold:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 阈值
+        unit:
+          type: string
+          title: 单位
+          maxLength: 16
+        message:
+          type: string
+          title: 告警描述
+          maxLength: 255
+    PatchedReservoirWriteRequest:
+      type: object
+      description: 写入场景：接受前端 camelCase 字段，支持 coordinates 数组。
+      properties:
+        code:
+          type: string
+          maxLength: 32
+        name:
+          type: string
+          minLength: 1
+          title: 水库名称
+          maxLength: 128
+        location:
+          type: string
+          title: 所在位置
+          maxLength: 255
+        region:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirRegionEnum'
+          title: 所在区域
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirTypeEnum'
+          title: 水库类型
+        capacity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 总库容(万m³)
+        deadWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        normalWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        floodLimitLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        warningLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        guaranteeLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currentWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currentStorage:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        inflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        outflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        rainfall:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        status:
+          $ref: '#/components/schemas/ReservoirStatusEnum'
+        deviceStatus:
+          $ref: '#/components/schemas/DeviceStatusEnum'
+        longitude:
+          type: number
+          format: double
+          maximum: 10000
+          minimum: -10000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        latitude:
+          type: number
+          format: double
+          maximum: 10000
+          minimum: -10000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        coordinates:
+          type: array
+          items:
+            type: number
+            format: double
+            maximum: 10000
+            minimum: -10000
+            exclusiveMaximum: true
+            exclusiveMinimum: true
+          writeOnly: true
+          maxItems: 2
+          minItems: 2
+        responsiblePerson:
+          type: string
+        phone:
+          type: string
+          title: 联系电话
+          maxLength: 20
+        description:
+          type: string
+          title: 备注
+    ReservoirDetail:
+      type: object
+      description: 详情场景：追加水位参数、流量与联系人（手机号脱敏，标准 3.8）。
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          title: 水库编号
+          maxLength: 32
+        name:
+          type: string
+          title: 水库名称
+          maxLength: 128
+        location:
+          type: string
+          title: 所在位置
+          maxLength: 255
+        region:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirRegionEnum'
+          title: 所在区域
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirTypeEnum'
+          title: 水库类型
+        capacity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 总库容(万m³)
+        currentWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        warningLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirStatusEnum'
+          title: 运行状态
+        statusLabel:
+          type: string
+          readOnly: true
+        deviceStatus:
+          type: string
+          readOnly: true
+        deviceStatusLabel:
+          type: string
+          readOnly: true
+        updateTime:
+          type: string
+          format: date-time
+          readOnly: true
+        coordinates:
+          type: array
+          items:
+            type: number
+            format: double
+          description: 纯函数：返回 [经度, 纬度]，不查库（标准 3.3）。
+          readOnly: true
+        deadWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        normalWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        floodLimitLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        guaranteeLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        currentStorage:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        inflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 入库流量(m³/s)
+        outflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 出库流量(m³/s)
+        rainfall:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 降雨量(mm)
+        responsiblePerson:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          description: 责任人电话脱敏（标准 3.8）。
+          readOnly: true
+        description:
+          type: string
+          title: 备注
+      required:
+      - code
+      - coordinates
+      - currentStorage
+      - currentWaterLevel
+      - deadWaterLevel
+      - deviceStatus
+      - deviceStatusLabel
+      - floodLimitLevel
+      - guaranteeLevel
+      - id
+      - name
+      - normalWaterLevel
+      - phone
+      - region
+      - responsiblePerson
+      - statusLabel
+      - type
+      - updateTime
+      - warningLevel
+    ReservoirList:
+      type: object
+      description: 列表场景：只暴露列表渲染所需字段。
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          title: 水库编号
+          maxLength: 32
+        name:
+          type: string
+          title: 水库名称
+          maxLength: 128
+        location:
+          type: string
+          title: 所在位置
+          maxLength: 255
+        region:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirRegionEnum'
+          title: 所在区域
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirTypeEnum'
+          title: 水库类型
+        capacity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 总库容(万m³)
+        currentWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        warningLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirStatusEnum'
+          title: 运行状态
+        statusLabel:
+          type: string
+          readOnly: true
+        deviceStatus:
+          type: string
+          readOnly: true
+        deviceStatusLabel:
+          type: string
+          readOnly: true
+        updateTime:
+          type: string
+          format: date-time
+          readOnly: true
+        coordinates:
+          type: array
+          items:
+            type: number
+            format: double
+          description: 纯函数：返回 [经度, 纬度]，不查库（标准 3.3）。
+          readOnly: true
+      required:
+      - code
+      - coordinates
+      - currentWaterLevel
+      - deviceStatus
+      - deviceStatusLabel
+      - id
+      - name
+      - region
+      - statusLabel
+      - type
+      - updateTime
+      - warningLevel
+    ReservoirRegionEnum:
+      enum:
+      - 华东
+      - 华中
+      - 华北
+      - 东北
+      - 西北
+      - 西南
+      - 华南
+      type: string
+      description: |-
+        * `华东` - 华东
+        * `华中` - 华中
+        * `华北` - 华北
+        * `东北` - 东北
+        * `西北` - 西北
+        * `西南` - 西南
+        * `华南` - 华南
+    ReservoirStatusEnum:
+      enum:
+      - normal
+      - warning
+      - danger
+      - offline
+      type: string
+      description: |-
+        * `normal` - 正常
+        * `warning` - 预警
+        * `danger` - 告警
+        * `offline` - 离线
+    ReservoirTypeEnum:
+      enum:
+      - 大型水库
+      - 中型水库
+      - 小型水库
+      type: string
+      description: |-
+        * `大型水库` - 大型水库
+        * `中型水库` - 中型水库
+        * `小型水库` - 小型水库
+    ReservoirWrite:
+      type: object
+      description: 写入场景：接受前端 camelCase 字段，支持 coordinates 数组。
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        code:
+          type: string
+          maxLength: 32
+        name:
+          type: string
+          title: 水库名称
+          maxLength: 128
+        location:
+          type: string
+          title: 所在位置
+          maxLength: 255
+        region:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirRegionEnum'
+          title: 所在区域
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirTypeEnum'
+          title: 水库类型
+        capacity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 总库容(万m³)
+        deadWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        normalWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        floodLimitLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        warningLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        guaranteeLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currentWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currentStorage:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        inflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        outflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        rainfall:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        status:
+          $ref: '#/components/schemas/ReservoirStatusEnum'
+        deviceStatus:
+          $ref: '#/components/schemas/DeviceStatusEnum'
+        longitude:
+          type: number
+          format: double
+          maximum: 10000
+          minimum: -10000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        latitude:
+          type: number
+          format: double
+          maximum: 10000
+          minimum: -10000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        responsiblePerson:
+          type: string
+        phone:
+          type: string
+          title: 联系电话
+          maxLength: 20
+        description:
+          type: string
+          title: 备注
+      required:
+      - id
+      - name
+      - region
+      - type
+    ReservoirWriteRequest:
+      type: object
+      description: 写入场景：接受前端 camelCase 字段，支持 coordinates 数组。
+      properties:
+        code:
+          type: string
+          maxLength: 32
+        name:
+          type: string
+          minLength: 1
+          title: 水库名称
+          maxLength: 128
+        location:
+          type: string
+          title: 所在位置
+          maxLength: 255
+        region:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirRegionEnum'
+          title: 所在区域
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ReservoirTypeEnum'
+          title: 水库类型
+        capacity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          title: 总库容(万m³)
+        deadWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        normalWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        floodLimitLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        warningLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        guaranteeLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currentWaterLevel:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currentStorage:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        inflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        outflow:
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        rainfall:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        status:
+          $ref: '#/components/schemas/ReservoirStatusEnum'
+        deviceStatus:
+          $ref: '#/components/schemas/DeviceStatusEnum'
+        longitude:
+          type: number
+          format: double
+          maximum: 10000
+          minimum: -10000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        latitude:
+          type: number
+          format: double
+          maximum: 10000
+          minimum: -10000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        coordinates:
+          type: array
+          items:
+            type: number
+            format: double
+            maximum: 10000
+            minimum: -10000
+            exclusiveMaximum: true
+            exclusiveMinimum: true
+          writeOnly: true
+          maxItems: 2
+          minItems: 2
+        responsiblePerson:
+          type: string
+        phone:
+          type: string
+          title: 联系电话
+          maxLength: 20
+        description:
+          type: string
+          title: 备注
+      required:
+      - name
+      - region
+      - type
+    TokenPair:
+      type: object
+      description: 登录出参：访问令牌 + 刷新令牌 + 当前用户。
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
+      required:
+      - access
+      - refresh
+      - user
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    User:
+      type: object
+      description: 用户详情：字段 camelCase，手机号按角色脱敏（标准 3.8）。
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          title: 用户名
+          description: 必填；长度为150个字符或以下；只能包含字母、数字、特殊字符“@”、“.”、“-”和“_”。
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: 电子邮件地址
+        phone:
+          type: string
+          description: 手机号脱敏：仅管理员可见完整号码（标准 3.8）。
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRoleEnum'
+          readOnly: true
+          title: 角色
+        roleLabel:
+          type: string
+          description: 纯函数：返回角色中文名，不查库。
+          readOnly: true
+        isStaff:
+          type: boolean
+          readOnly: true
+        isActive:
+          type: boolean
+          readOnly: true
+        lastLogin:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - email
+      - id
+      - isActive
+      - isStaff
+      - lastLogin
+      - phone
+      - role
+      - roleLabel
+      - username
+    UserRoleEnum:
+      enum:
+      - admin
+      - operator
+      - viewer
+      type: string
+      description: |-
+        * `admin` - 管理员
+        * `operator` - 操作员
+        * `viewer` - 只读用户
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

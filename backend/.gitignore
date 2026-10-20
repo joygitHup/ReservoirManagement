@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Django
+*.sqlite3
+db.sqlite3
+staticfiles/
+media/
+
+# 环境变量与密钥（禁止提交，标准 28.2）
+.env
+.env.local
+.env.*.local
+
+# 工具
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+htmlcov_report/
+coverage.xml
+.eslintcache
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store

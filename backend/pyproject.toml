@@ -1,0 +1,51 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["migrations", ".venv", "staticfiles", "media"]
+
+[tool.ruff.lint]
+# T20 禁止 print；E722 禁止裸 except（标准 28.2 工具链映射）
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "DJ", "T20", "SIM"]
+ignore = ["DJ001"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*" = ["E501", "I001", "F401"]
+"**/tests/*" = ["T20"]
+# 序列化器字段名对齐前端 camelCase 契约（标准 3.2 / 33.1），
+# 故豁免 mixedCase 与 SerializerMethodField 的 get_xxx 命名检查
+"*/serializers/*" = ["N815", "N802"]
+# 过滤器字段名与查询参数（camelCase）保持一致，便于前端直传（标准 19.2）
+"*/filters.py" = ["N815"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "common", "config"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+show_error_codes = true
+exclude = ["migrations", ".venv"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra --strict-markers"
+testpaths = ["apps", "common"]
+
+[tool.coverage.run]
+source = ["apps", "common", "config"]
+omit = ["*/migrations/*", "*/tests/*", "*/management/commands/*", "config/settings/*"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]

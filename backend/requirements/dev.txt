@@ -1,0 +1,12 @@
+-r base.txt
+
+# 开发与质量工具
+ruff>=0.7,<0.12
+mypy>=1.13
+django-stubs>=5.1
+django-stubs-ext>=5.1
+pytest>=8.3
+pytest-django>=4.9
+pytest-cov>=6.0
+factory-boy>=3.3
+coverage>=7.6

@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { baseMapConfigs } from '@/components/map/MapView';
+import { SystemSettingsDialog, type SystemSettings } from '@/components/layout/SystemSettingsDialog';
 
 interface ToolbarProps {
   baseMapType: string;
@@ -51,6 +52,9 @@ interface ToolbarProps {
   onToolChange: (tool: string | null) => void;
   alertCount: number;
   onToggleAlertPanel: () => void;
+  settings: SystemSettings;
+  onSettingsChange: (patch: Partial<SystemSettings>) => void;
+  onSettingsReset: () => void;
 }
 
 const layerOptions = [
@@ -73,8 +77,13 @@ export function TopToolbar({
   activeTool,
   onToolChange,
   alertCount,
+  onToggleAlertPanel,
+  settings,
+  onSettingsChange,
+  onSettingsReset,
 }: ToolbarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -238,6 +247,7 @@ export function TopToolbar({
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 text-slate-300 hover:text-white hover:bg-slate-800/80 relative"
+                onClick={onToggleAlertPanel}
               >
                 <Bell className="w-4 h-4" />
                 {alertCount > 0 && (
@@ -276,6 +286,7 @@ export function TopToolbar({
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 text-slate-300 hover:text-white hover:bg-slate-800/80"
+                onClick={() => setSettingsOpen(true)}
               >
                 <Settings className="w-4 h-4" />
               </Button>
@@ -286,6 +297,15 @@ export function TopToolbar({
           </Tooltip>
         </div>
       </header>
+
+      {/* 系统设置弹窗 */}
+      <SystemSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onChange={onSettingsChange}
+        onReset={onSettingsReset}
+      />
     </TooltipProvider>
   );
 }
